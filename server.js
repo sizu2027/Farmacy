@@ -270,12 +270,13 @@ app.post('/api/medicines', ...pharmacyApi, (req, res) => {
   if (e) return err(res, 400, e);
   const b = req.body;
   const info = db.prepare(
-    `INSERT INTO medicines (name, generic_name, manufacturer, unit, purchase_price, sale_price, stock, reorder_level, expiry_date, supplier_id, sku)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO medicines (name, generic_name, manufacturer, unit, purchase_price, sale_price, stock, reorder_level, expiry_date, supplier_id, sku, store_number)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     cleanStr(b.name, 150), cleanStr(b.generic_name), cleanStr(b.manufacturer), cleanStr(b.unit, 20) || 'পিস',
     asInt(b.purchase_price), asInt(b.sale_price), asInt(b.stock), asInt(b.reorder_level),
-    cleanStr(b.expiry_date, 10), b.supplier_id ? asInt(b.supplier_id) : null, cleanStr(b.sku, 50)
+    cleanStr(b.expiry_date, 10), b.supplier_id ? asInt(b.supplier_id) : null, cleanStr(b.sku, 50),
+    cleanStr(b.store_number, 50)
   );
   res.json({ ok: true, id: info.lastInsertRowid });
 });
@@ -288,11 +289,12 @@ app.put('/api/medicines/:id', ...pharmacyApi, (req, res) => {
   const b = req.body;
   db.prepare(
     `UPDATE medicines SET name=?, generic_name=?, manufacturer=?, unit=?, purchase_price=?, sale_price=?,
-     stock=?, reorder_level=?, expiry_date=?, supplier_id=?, sku=? WHERE id=?`
+     stock=?, reorder_level=?, expiry_date=?, supplier_id=?, sku=?, store_number=? WHERE id=?`
   ).run(
     cleanStr(b.name, 150), cleanStr(b.generic_name), cleanStr(b.manufacturer), cleanStr(b.unit, 20) || 'পিস',
     asInt(b.purchase_price), asInt(b.sale_price), asInt(b.stock), asInt(b.reorder_level),
-    cleanStr(b.expiry_date, 10), b.supplier_id ? asInt(b.supplier_id) : null, cleanStr(b.sku, 50), id
+    cleanStr(b.expiry_date, 10), b.supplier_id ? asInt(b.supplier_id) : null, cleanStr(b.sku, 50),
+    cleanStr(b.store_number, 50), id
   );
   res.json({ ok: true });
 });

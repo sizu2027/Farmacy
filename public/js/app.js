@@ -106,7 +106,8 @@ function input(name, label, opts) {
   return '<div class="field' + (opts.full ? ' full' : '') + '"><label>' + esc(label) + '</label>' +
     '<input name="' + name + '" type="' + (opts.type || 'text') + '" value="' + esc(opts.value || '') + '"' +
     (opts.required ? ' required' : '') + (opts.min !== undefined ? ' min="' + opts.min + '"' : '') +
-    (opts.step ? ' step="' + opts.step + '"' : '') + '></div>';
+    (opts.step ? ' step="' + opts.step + '"' : '') +
+    (opts.placeholder ? ' placeholder="' + esc(opts.placeholder) + '"' : '') + '></div>';
 }
 
 // ---------------------------------------------------------------------------
@@ -329,7 +330,7 @@ routes.medicines = async function (el) {
     '<label><input type="checkbox" id="med-exp"> মেয়াদ আসন্ন</label>' +
     '<button class="btn" id="med-add">+ নতুন ওষুধ</button></div>' +
     '<div class="table-wrap"><table><thead><tr><th>নাম</th><th>জেনেরিক</th><th>কোম্পানি</th><th>ক্রয়</th><th>বিক্রয়</th>' +
-    '<th>স্টক</th><th>মেয়াদ</th><th></th></tr></thead><tbody id="med-rows"></tbody></table></div>';
+    '<th>স্টক</th><th>স্টোর নং</th><th>মেয়াদ</th><th></th></tr></thead><tbody id="med-rows"></tbody></table></div>';
   var load = async function () {
     var q = $('#med-q').value.trim();
     var p = '/api/medicines?' + new URLSearchParams({
@@ -343,10 +344,10 @@ routes.medicines = async function (el) {
       return '<tr><td><strong>' + esc(m.name) + '</strong>' + (m.sku ? '<br><small>' + esc(m.sku) + '</small>' : '') + '</td>' +
         '<td>' + esc(m.generic_name) + '</td><td>' + esc(m.manufacturer) + '</td>' +
         '<td>' + fmt(m.purchase_price) + '</td><td>' + fmt(m.sale_price) + '</td>' +
-        '<td>' + stockBadge + '</td><td>' + esc(m.expiry_date || '-') + '</td>' +
+        '<td>' + stockBadge + '</td><td>' + esc(m.store_number || '-') + '</td><td>' + esc(m.expiry_date || '-') + '</td>' +
         '<td style="white-space:nowrap"><button class="btn small ghost" data-edit="' + m.id + '">এডিট</button> ' +
         (state.user.role === 'master_admin' ? '<button class="btn small danger" data-del="' + m.id + '">মুছুন</button>' : '') + '</td></tr>';
-    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted)">কোনো ওষুধ পাওয়া যায়নি।</td></tr>';
+    }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted)">কোনো ওষুধ পাওয়া যায়নি।</td></tr>';
     bindMedButtons();
   };
   var deb;
@@ -387,6 +388,7 @@ async function medForm(m, onDone) {
     input('manufacturer', 'কোম্পানি', { value: m.manufacturer }) +
     input('unit', 'একক', { value: m.unit || 'পিস' }) +
     input('sku', 'SKU/কোড', { value: m.sku }) +
+    input('store_number', 'স্টোর নম্বর', { value: m.store_number || '', placeholder: 'যেমন: B-12 / SHELF-3' }) +
     input('purchase_price', 'ক্রয়মূল্য (৳)', { type: 'number', min: 0, value: m.purchase_price || 0 }) +
     input('sale_price', 'বিক্রয়মূল্য (৳)', { type: 'number', min: 0, value: m.sale_price || 0 }) +
     input('stock', 'স্টক', { type: 'number', min: 0, value: m.stock || 0 }) +
@@ -397,7 +399,7 @@ async function medForm(m, onDone) {
     async function (data) {
       var payload = {
         name: data.name, generic_name: data.generic_name, manufacturer: data.manufacturer,
-        unit: data.unit, sku: data.sku,
+        unit: data.unit, sku: data.sku, store_number: (data.store_number || '').trim(),
         purchase_price: parseInt(data.purchase_price, 10) || 0,
         sale_price: parseInt(data.sale_price, 10) || 0,
         stock: parseInt(data.stock, 10) || 0,
@@ -409,6 +411,60 @@ async function medForm(m, onDone) {
       else await api.post('/api/medicines', payload);
       onDone();
     });
+  attachMedicineAutocomplete();
+}
+
+// ---- Medicine name autocomplete (from MEDICINE_DB: Bangladeshi pharma database) ----
+function attachMedicineAutocomplete() {
+  if (typeof MEDICINE_DB === 'undefined' || !Array.isArray(MEDICINE_DB)) return;
+  var nameInput = document.querySelector('#modal-form input[name="name"]');
+  if (!nameInput) return;
+  // wrap in relative container for the dropdown
+  var wrap = document.createElement('div');
+  wrap.style.position = 'relative';
+  nameInput.parentNode.insertBefore(wrap, nameInput);
+  wrap.appendChild(nameInput);
+  var list = document.createElement('div');
+  list.className = 'ac-list';
+  list.style.display = 'none';
+  wrap.appendChild(list);
+
+  function close() { list.style.display = 'none'; list.innerHTML = ''; }
+  function pick(item) {
+    nameInput.value = item.name;
+    var g = document.querySelector('#modal-form input[name="generic_name"]');
+    var mf = document.querySelector('#modal-form input[name="manufacturer"]');
+    if (g && !g.value) g.value = item.generic || '';
+    if (mf && !mf.value) mf.value = item.company || '';
+    close();
+    nameInput.focus();
+  }
+  nameInput.addEventListener('input', function () {
+    var q = nameInput.value.trim().toLowerCase();
+    if (q.length < 2) { close(); return; }
+    var matches = [];
+    for (var i = 0; i < MEDICINE_DB.length && matches.length < 8; i++) {
+      var it = MEDICINE_DB[i];
+      if ((it.name || '').toLowerCase().indexOf(q) !== -1 ||
+          (it.generic || '').toLowerCase().indexOf(q) !== -1) {
+        matches.push(it);
+      }
+    }
+    if (!matches.length) { close(); return; }
+    list.innerHTML = matches.map(function (it, idx) {
+      return '<div class="ac-item" data-idx="' + idx + '"><strong>' + esc(it.name) + '</strong>' +
+        '<small>' + esc(it.generic || '') + ' • ' + esc(it.company || '') +
+        (it.strength ? ' • ' + esc(it.strength) : '') + '</small></div>';
+    }).join('');
+    list.style.display = 'block';
+    list.querySelectorAll('.ac-item').forEach(function (el) {
+      el.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        pick(matches[parseInt(el.getAttribute('data-idx'), 10)]);
+      });
+    });
+  });
+  nameInput.addEventListener('blur', function () { setTimeout(close, 150); });
 }
 
 // ---- POS ----

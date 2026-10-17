@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS medicines (
   expiry_date TEXT NOT NULL DEFAULT '',
   supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
   sku TEXT NOT NULL DEFAULT '',
+  store_number TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -90,6 +91,14 @@ CREATE TABLE IF NOT EXISTS sale_items (
   price INTEGER NOT NULL
 );
 `);
+
+// Migration: add store_number to existing medicines tables (created before this column existed).
+try {
+  const cols = db.prepare("PRAGMA table_info(medicines)").all().map(c => c.name);
+  if (!cols.includes('store_number')) {
+    db.exec("ALTER TABLE medicines ADD COLUMN store_number TEXT NOT NULL DEFAULT ''");
+  }
+} catch (e) { /* fresh DBs get it from CREATE TABLE */ }
 
 // Settings defaults only. software_online: '1' = ON, '0' = OFF (maintenance).
 const DEFAULT_SETTINGS = {
