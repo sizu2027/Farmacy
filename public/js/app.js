@@ -212,7 +212,7 @@ function renderShell() {
     '<div class="shell">' +
     '<aside class="sidebar" id="sidebar"><div class="brand">💊 ' + esc(state.settings.pharmacy_name || 'ফার্মেসি') + '</div>' +
     '<div class="who">' + esc(state.user.fullName) + ' (' + roleName(state.user.role) + ')</div>' +
-    '<nav class="nav">' + items + '</nav></div>' +
+    '<nav class="nav">' + items + '</nav></aside>' +
     '<div class="main"><div class="topbar"><div>' +
     '<button class="btn ghost small menu-btn" id="menu-btn">☰ মেনু</button> ' +
     '<strong>' + pageTitle(state.route) + '</strong></div>' +
