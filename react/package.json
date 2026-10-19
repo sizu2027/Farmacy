@@ -1,0 +1,1 @@
+{"dependencies":{"react":"^18.3.1","react-dom":"^18.3.1"},"description":"Farmacy — ফার্মেসি ইনভেন্টরি ম্যানেজমেন্ট (React, fully client-side, localStorage)","devDependencies":{"@vitejs/plugin-react":"^4.3.4","vite":"^5.4.11"},"name":"farmacy-react","private":true,"scripts":{"build":"vite build","dev":"vite","preview":"vite preview"},"version":"1.0.0"}
